@@ -1,9 +1,8 @@
 import { createStackNavigator } from '@react-navigation/stack';
-import { ROUTES } from '../utils/index';
 
 import Login from '../screens/auth/Login';
 import Register from '../screens/auth/Register';
-import HomeScreen from '../screens/HomeScreen';
+import { ROUTES } from '../utils';
 
 const Stack = createStackNavigator();
 

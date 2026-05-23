@@ -13,12 +13,12 @@ const ProfileScreen = () => {
       }}
     >
       <Image
-        source={{
-          uri: IMG.LOGO,
-        }}
+        source={IMG.LOGO}
         style={{
-          width: 200,
-          height: 200,
+          width: '80%',
+          height: 150,
+          resizeMode: 'contain',
+          marginBottom: 20,
         }}
       />
       <Text>ProfileScreen</Text>
