@@ -9,9 +9,11 @@ import {
   Image,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { useDispatch, useSelector } from 'react-redux';
 import CustomButton from '../../components/CustomButton';
 import CustomTextInput from '../../components/CustomTextInput';
 import { ROUTES, IMG } from '../../utils';
+import { userRegister, resetRegister } from '../../app/reducers/auth';
 import styles from './styles';
 
 const Register = () => {
@@ -20,6 +22,8 @@ const Register = () => {
   const [password, setPassword] = useState('');
   const [confirmPass, setConfirmPass] = useState('');
   const navigation = useNavigation();
+  const dispatch = useDispatch();
+  const { registerLoading, registerError, registerErrorMessage } = useSelector((state: any) => state.auth);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -31,6 +35,13 @@ const Register = () => {
     }).start();
   }, []);
 
+  useEffect(() => {
+    if (registerError && registerErrorMessage) {
+      Alert.alert('Registration Failed', registerErrorMessage);
+      dispatch(resetRegister());
+    }
+  }, [registerError, registerErrorMessage, dispatch]);
+
   const handleRegister = () => {
     if (!name || !emailAdd || !password || !confirmPass) {
       Alert.alert('Missing Fields', 'Please fill in all fields.');
@@ -40,7 +51,7 @@ const Register = () => {
       Alert.alert('Password Mismatch', 'Passwords do not match!');
       return;
     }
-    Alert.alert('Success', 'Account registered!');
+    dispatch(userRegister({ email: emailAdd, password }));
   };
 
   return (
@@ -61,6 +72,7 @@ const Register = () => {
             containerStyle={styles.inputContainer}
             labelStyle={styles.label}
             textStyle={styles.inputText}
+            secureTextEntry={false}
           />
 
           <CustomTextInput
@@ -71,6 +83,7 @@ const Register = () => {
             containerStyle={styles.inputContainer}
             labelStyle={styles.label}
             textStyle={styles.inputText}
+            secureTextEntry={false}
           />
 
           <CustomTextInput
@@ -116,7 +129,7 @@ const Register = () => {
         <View style={styles.footer}>
           <Text style={styles.footerText}>Already have an account?</Text>
           <TouchableOpacity
-            onPress={() => navigation.navigate(ROUTES.LOGIN)}
+            onPress={() => (navigation as any).navigate(ROUTES.LOGIN)}
           >
             <Text style={styles.registerText}> Login</Text>
           </TouchableOpacity>

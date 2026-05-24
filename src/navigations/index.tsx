@@ -1,25 +1,37 @@
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { useEffect } from 'react';
-import { Platform, StatusBar, useColorScheme } from 'react-native';
+import { Platform, StatusBar } from 'react-native';
 import { useSelector } from 'react-redux';
 
 import AuthNav from './AuthNav';
 import MainNav from './MainNav';
 
+const DarkTheme = {
+  ...DefaultTheme,
+  dark: true,
+  colors: {
+    ...DefaultTheme.colors,
+    primary: '#ffb347',
+    background: '#121212',
+    card: '#1E1E1E',
+    text: '#FFFFFF',
+    border: '#333333',
+    notification: '#ffb347',
+  },
+};
+
 export default () => {
-  const isDarkMode = useColorScheme() === 'dark';
-  const isLoggedIn = useSelector(state => state.auth?.data != null);
+  const isLoggedIn = useSelector((state: any) => state.auth?.data != null);
 
   useEffect(() => {
     if (Platform.OS === 'android') {
-      StatusBar.setBackgroundColor('#000000', true);
+      StatusBar.setBackgroundColor('#121212', true);
     }
-
-    StatusBar.setBarStyle('dark-content', true);
-  }, [isDarkMode]);
+    StatusBar.setBarStyle('light-content', true);
+  }, []);
 
   return (
-    <NavigationContainer>
+    <NavigationContainer theme={DarkTheme}>
       {isLoggedIn ? <MainNav /> : <AuthNav />}
     </NavigationContainer>
   );

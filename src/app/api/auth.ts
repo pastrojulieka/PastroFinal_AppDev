@@ -1,25 +1,26 @@
-const BASE_URL = 'http://192.168.137.28:8000/api';
-const options = {
-  headers: {
-    Accept: 'application/json',
-    'Content-Type': 'application/json',
-  },
-};
+import { authService, AuthResponse } from '../../services';
 
-export async function authLogin({ emailAdd, password } = {}) {
-  const response = await fetch(BASE_URL + '/login', {
-    method: 'POST',
-    ...options,
-    body: JSON.stringify({
-      email: emailAdd,
-      password,
-    }),
-  });
-  const data = await response.json();
+export interface LoginParams {
+  emailAdd: string;
+  password: string;
+}
 
-  if (response.ok) {
-    return data;
+export async function authLogin({ emailAdd, password }: LoginParams): Promise<AuthResponse> {
+  const result = await authService.login(emailAdd, password);
+  
+  if (result.success && result.data) {
+    return result.data;
   } else {
-    throw new Error(data.message || 'Login failed');
+    throw new Error(result.message || 'Login failed');
+  }
+}
+
+export async function authRegister(email: string, password: string) {
+  const result = await authService.register(email, password);
+  
+  if (result.success && result.data) {
+    return result.data;
+  } else {
+    throw new Error(result.message || 'Registration failed');
   }
 }
