@@ -2,8 +2,8 @@ import api from './api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ApiResponse, LoginCredentials, RegisterCredentials, AuthResponse, User } from './types';
 
-const AUTH_TOKEN_KEY = 'token';
-const AUTH_USER_KEY = 'user';
+export const AUTH_TOKEN_KEY = 'token';
+export const AUTH_USER_KEY = 'user';
 
 export const authService = {
   login: async (email: string, password: string): Promise<ApiResponse<AuthResponse>> => {

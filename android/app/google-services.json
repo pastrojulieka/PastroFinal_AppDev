@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "549158712104",
+    "project_id": "julieka-39ffe",
+    "storage_bucket": "julieka-39ffe.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:549158712104:android:9dfe73d590915afcb4161d",
+        "android_client_info": {
+          "package_name": "com.appdev"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "549158712104-abb81c02ov9hodk1r0uum6v717q4kft2.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.appdev",
+            "certificate_hash": "0b80f8e1d967843fbec0ef7809d9b83f7be897ee"
+          }
+        },
+        {
+          "client_id": "549158712104-3gigo7j35g5hurv74u2a6l12qff8rdk2.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCWmtNr7QscCYQaEyQ414hKPgBwZ7Zd5GU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "549158712104-3gigo7j35g5hurv74u2a6l12qff8rdk2.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

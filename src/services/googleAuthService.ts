@@ -1,0 +1,167 @@
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import auth from '@react-native-firebase/auth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import api from './api';
+import { AUTH_TOKEN_KEY, AUTH_USER_KEY } from './authService';
+import { ApiResponse, AuthResponse } from './types';
+
+// Configure Google Sign-In
+// NOTE: For Firebase Auth, you can use either:
+// 1. Web Client ID (from Google Cloud Console Web application OAuth)
+// 2. Or leave empty to use Firebase's default
+GoogleSignin.configure({
+  webClientId: '549158712104-3gigo7j35g5hurv74u2a6l12qff8rdk2.apps.googleusercontent.com',
+  offlineAccess: true,
+  forceCodeForRefreshToken: true,
+});
+
+export const googleAuthService = {
+  /**
+   * Sign in with Google and authenticate with backend
+   */
+  signInWithGoogle: async (): Promise<ApiResponse<AuthResponse>> => {
+    try {
+      console.log('Starting Google Sign-In...');
+
+      // Check if Google Play Services are available
+      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+
+      // Sign in with Google
+      const userInfo = await GoogleSignin.signIn();
+      console.log('Google Sign-In successful:', userInfo);
+
+      // Get ID token from Google
+      const tokens = await GoogleSignin.getTokens();
+      const idToken = tokens.idToken;
+
+      if (!idToken) {
+        return { success: false, message: 'Failed to get ID token from Google' };
+      }
+
+      // Create Firebase credential
+      const googleCredential = auth.GoogleAuthProvider.credential(idToken);
+
+      // Sign in to Firebase
+      const firebaseUserCredential = await auth().signInWithCredential(googleCredential);
+      console.log('Firebase Sign-In successful:', firebaseUserCredential.user.email);
+
+      // Get Firebase ID token to send to backend
+      const firebaseToken = await firebaseUserCredential.user.getIdToken();
+      console.log('Firebase ID token obtained');
+
+      // Send to backend for verification and get app JWT
+      if (!userInfo.data?.user) {
+        return { success: false, message: 'Failed to get user info from Google' };
+      }
+
+      const response = await api.post<AuthResponse>('/auth/google', {
+        firebase_token: firebaseToken,
+        email: userInfo.data.user.email,
+        name: userInfo.data.user.name,
+        photo: userInfo.data.user.photo,
+      });
+
+      console.log('Backend auth response:', JSON.stringify(response.data, null, 2));
+
+      // Store tokens same as regular login
+      if (response.data.token) {
+        await AsyncStorage.setItem(AUTH_TOKEN_KEY, response.data.token);
+        await AsyncStorage.setItem(AUTH_USER_KEY, JSON.stringify(response.data.user));
+        console.log('App token stored successfully');
+        return { success: true, data: response.data };
+      }
+
+      return { success: false, message: 'Backend did not return token' };
+    } catch (error: any) {
+      console.log('Google Sign-In error:', error);
+      console.log('Error code:', error.code);
+      console.log('Error message:', error.message);
+
+      // Handle specific error codes
+      if (error.code === 'SIGN_IN_CANCELLED') {
+        return { success: false, message: 'Sign in was cancelled' };
+      } else if (error.code === 'IN_PROGRESS') {
+        return { success: false, message: 'Sign in already in progress' };
+      } else if (error.code === 'PLAY_SERVICES_NOT_AVAILABLE') {
+        return { success: false, message: 'Google Play Services not available' };
+      } else if (error.code === 'DEVELOPER_ERROR') {
+        console.log('DEVELOPER_ERROR: Check these common causes:');
+        console.log('1. SHA-1 fingerprint not registered in Google Cloud Console');
+        console.log('2. Package name mismatch (should be: com.appdev)');
+        console.log('3. Web Client ID is incorrect');
+        console.log('4. Google Sign-In API not enabled');
+        return {
+          success: false,
+          message: 'Google Sign-In configuration error. Check SHA-1 fingerprint and OAuth settings in Google Cloud Console.'
+        };
+      }
+
+      return {
+        success: false,
+        message: error?.message || 'Google Sign-In failed'
+      };
+    }
+  },
+
+  /**
+   * Sign out from Google and Firebase
+   */
+  signOut: async (): Promise<void> => {
+    try {
+      // Sign out from Google
+      await GoogleSignin.signOut();
+      // Sign out from Firebase
+      await auth().signOut();
+      // Clear local storage
+      await AsyncStorage.multiRemove([AUTH_TOKEN_KEY, AUTH_USER_KEY, 'customer_name']);
+      console.log('Google Sign-Out successful');
+    } catch (error) {
+      console.log('Google Sign-Out error:', error);
+    }
+  },
+
+  /**
+   * Check if user is currently signed in (using Firebase)
+   */
+  isSignedIn: (): boolean => {
+    return !!auth().currentUser;
+  },
+
+  /**
+   * Get current Firebase user
+   */
+  getCurrentUser: () => {
+    return auth().currentUser;
+  },
+
+  /**
+   * Debug: Check Google Play Services availability and configuration
+   */
+  checkPlayServices: async (): Promise<boolean> => {
+    try {
+      console.log('Checking Google Play Services...');
+      const available = await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: false });
+      console.log('Google Play Services available:', available);
+      return available;
+    } catch (error: any) {
+      console.log('Google Play Services check failed:', error);
+      return false;
+    }
+  },
+
+  /**
+   * Debug: Get current user info if signed in
+   */
+  getCurrentGoogleUser: async () => {
+    try {
+      const user = await GoogleSignin.getCurrentUser();
+      console.log('Current Google user:', user);
+      return user;
+    } catch (error: any) {
+      console.log('Get current user failed:', error);
+      return null;
+    }
+  },
+};
+
+export default googleAuthService;

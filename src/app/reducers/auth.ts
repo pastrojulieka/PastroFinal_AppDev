@@ -120,3 +120,9 @@ export const userRegister = (payload: { email: string; password: string }) => ({
 export const resetRegister = () => ({
   type: USER_REGISTER_RESET,
 });
+
+// Direct login success (for Google Sign-In and other OAuth flows)
+export const loginSuccess = (payload: AuthResponse) => ({
+  type: USER_LOGIN_COMPLETED,
+  payload,
+});

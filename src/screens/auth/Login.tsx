@@ -1,21 +1,23 @@
 import { useState, useEffect, useRef } from 'react';
-import {Alert, Text, TouchableOpacity, View, StatusBar, Animated, Image } from 'react-native';
+import {Alert, Text, TouchableOpacity, View, StatusBar, Animated, Image, ActivityIndicator } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import CustomButton from '../../components/CustomButton';
 import CustomTextInput from '../../components/CustomTextInput';
 import { ROUTES, IMG } from '../../utils';
 import styles from './styles';
+import { googleAuthService } from '../../services';
 
 import { useDispatch, useSelector } from 'react-redux';
-import { userLogin } from '../../app/reducers/auth';
+import { userLogin, loginSuccess } from '../../app/reducers/auth';
 
 const Login = () => {
   const [emailAdd, setEmailAdd] = useState('');
   const [password, setPassword] = useState('');
-  const { isLoading, isError, errorMessage } = useSelector(state => state.auth);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const { isLoading, isError, errorMessage } = useSelector((state: any) => state.auth);
 
-  const navigation = useNavigation();
-   const dispatch = useDispatch();
+  const navigation = useNavigation<any>();
+  const dispatch = useDispatch();
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -25,6 +27,13 @@ const Login = () => {
       duration: 800,
       useNativeDriver: true,
     }).start();
+
+    // Debug: Check Google Play Services
+    const checkServices = async () => {
+      const available = await googleAuthService.checkPlayServices();
+      console.log('Google Play Services available:', available);
+    };
+    checkServices();
   }, []);
 
   useEffect(() => {
@@ -39,6 +48,23 @@ const Login = () => {
       return;
     }
     dispatch(userLogin({ emailAdd, password }));
+  };
+
+  const handleGoogleSignIn = async () => {
+    setGoogleLoading(true);
+    try {
+      const result = await googleAuthService.signInWithGoogle();
+      if (result.success && result.data) {
+        // Dispatch login success to Redux
+        dispatch(loginSuccess(result.data));
+      } else {
+        Alert.alert('Google Sign-In Failed', result.message || 'Could not sign in with Google');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'An unexpected error occurred during Google Sign-In');
+    } finally {
+      setGoogleLoading(false);
+    }
   };
 
   return (
@@ -84,8 +110,16 @@ const Login = () => {
           <Text style={styles.orText}>OR CONTINUE WITH</Text>
 
           <View style={styles.socialContainer}>
-            <TouchableOpacity style={styles.socialBtn}>
-              <Text style={styles.socialText}>Google</Text>
+            <TouchableOpacity
+              style={[styles.socialBtn, googleLoading && { opacity: 0.7 }]}
+              onPress={handleGoogleSignIn}
+              disabled={googleLoading}
+            >
+              {googleLoading ? (
+                <ActivityIndicator size="small" color="#121212" />
+              ) : (
+                <Text style={styles.socialText}>Google</Text>
+              )}
             </TouchableOpacity>
           </View>
         </View>
