@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { View, StyleSheet, ActivityIndicator, ScrollView } from 'react-native';
 import { Card, Text, Button, Avatar } from 'react-native-paper';
 import { useDispatch } from 'react-redux';
 import { customerService, authService, CustomerProfile, CustomerData } from '../services';
+import { useMercureProfile } from '../hooks/useMercure';
 import { resetLogin } from '../app/reducers/auth';
 
 const ProfileScreen = () => {
@@ -14,6 +15,13 @@ const ProfileScreen = () => {
   useEffect(() => {
     loadProfile();
   }, []);
+
+  // Real-time profile updates via Mercure
+  const handleProfileUpdate = useCallback(() => {
+    loadProfile();
+  }, []);
+
+  useMercureProfile(profile?.id ?? null, handleProfileUpdate);
 
   const loadProfile = async () => {
     try {

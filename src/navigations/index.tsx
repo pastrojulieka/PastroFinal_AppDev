@@ -5,6 +5,7 @@ import { useSelector } from 'react-redux';
 
 import AuthNav from './AuthNav';
 import MainNav from './MainNav';
+import mercureService from '../services/mercureService';
 
 const DarkTheme = {
   ...DefaultTheme,
@@ -29,6 +30,17 @@ export default () => {
     }
     StatusBar.setBarStyle('light-content', true);
   }, []);
+
+  // Initialize/destroy Mercure connection based on auth state
+  useEffect(() => {
+    if (isLoggedIn) {
+      mercureService.fetchSubscriberToken().then(() => {
+        console.log('[Navigation] Mercure subscriber token fetched');
+      });
+    } else {
+      mercureService.destroy();
+    }
+  }, [isLoggedIn]);
 
   return (
     <NavigationContainer theme={DarkTheme}>

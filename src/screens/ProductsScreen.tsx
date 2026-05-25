@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { View, FlatList, StyleSheet, ActivityIndicator } from 'react-native';
 import { Card, Text, Button, Chip } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { productService, stockService, Product, Stock } from '../services';
+import { useMercureProducts, useMercureStocks } from '../hooks/useMercure';
 import { ROUTES } from '../utils';
 
 const ProductsScreen = () => {
@@ -15,6 +16,14 @@ const ProductsScreen = () => {
   useEffect(() => {
     loadProductsAndStocks();
   }, []);
+
+  // Real-time updates via Mercure
+  const handleRealTimeRefresh = useCallback(() => {
+    loadProductsAndStocks();
+  }, []);
+
+  useMercureProducts(handleRealTimeRefresh);
+  useMercureStocks(handleRealTimeRefresh);
 
   const loadProductsAndStocks = async () => {
     try {
