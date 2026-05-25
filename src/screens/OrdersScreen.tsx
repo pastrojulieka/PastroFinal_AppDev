@@ -5,7 +5,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { orderService, Order } from '../services';
 import { useMercureOrders } from '../hooks/useMercure';
-import { AUTH_USER_KEY } from '../services/authService';
+import { AUTH_USER_KEY } from '../services/storageKeys';
 
 const CUSTOMER_NAME_KEY = 'customer_name';
 

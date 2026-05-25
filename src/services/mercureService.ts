@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from './api';
 
 // Mercure Hub URL - update this to match your Docker Mercure service
-const MERCURE_HUB_URL = 'http://192.168.196.186:9090/.well-known/mercure';
+const MERCURE_HUB_URL = 'http://192.168.1.20:9090/.well-known/mercure';
 
 // Event types published by the backend
 export interface MercureEvent<T = unknown> {

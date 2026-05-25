@@ -2,18 +2,25 @@ import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import auth from '@react-native-firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from './api';
-import { AUTH_TOKEN_KEY, AUTH_USER_KEY } from './authService';
+import axios from 'axios';
+import { AUTH_TOKEN_KEY, AUTH_USER_KEY } from './storageKeys';
 import { ApiResponse, AuthResponse } from './types';
 
-// Configure Google Sign-In
-// NOTE: For Firebase Auth, you can use either:
-// 1. Web Client ID (from Google Cloud Console Web application OAuth)
-// 2. Or leave empty to use Firebase's default
-GoogleSignin.configure({
-  webClientId: '549158712104-3gigo7j35g5hurv74u2a6l12qff8rdk2.apps.googleusercontent.com',
-  offlineAccess: true,
-  forceCodeForRefreshToken: true,
-});
+const WEB_CLIENT_ID = '549158712104-3gigo7j35g5hurv74u2a6l12qff8rdk2.apps.googleusercontent.com';
+let isGoogleSignInConfigured = false;
+
+const configureGoogleSignIn = () => {
+  if (!isGoogleSignInConfigured) {
+    GoogleSignin.configure({
+      webClientId: WEB_CLIENT_ID,
+      offlineAccess: true,
+      forceCodeForRefreshToken: true,
+      scopes: ['profile', 'email'],
+    });
+    isGoogleSignInConfigured = true;
+    console.log('Google Sign-In configured with webClientId:', WEB_CLIENT_ID);
+  }
+};
 
 export const googleAuthService = {
   /**
@@ -22,6 +29,8 @@ export const googleAuthService = {
   signInWithGoogle: async (): Promise<ApiResponse<AuthResponse>> => {
     try {
       console.log('Starting Google Sign-In...');
+
+      configureGoogleSignIn();
 
       // Check if Google Play Services are available
       await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
@@ -54,12 +63,31 @@ export const googleAuthService = {
         return { success: false, message: 'Failed to get user info from Google' };
       }
 
-      const response = await api.post<AuthResponse>('/auth/google', {
-        firebase_token: firebaseToken,
-        email: userInfo.data.user.email,
-        name: userInfo.data.user.name,
-        photo: userInfo.data.user.photo,
-      });
+      console.log('Sending Google auth request to backend:', api.defaults.baseURL + '/staff/google/verify');
+      let response;
+      try {
+        response = await api.post<AuthResponse>('/staff/google/verify', {
+          id_token: idToken,
+  });
+      } catch (err: any) {
+        console.log('Primary backend request failed:', err?.message || err);
+        // If network error (no response), try emulator fallback host for Android emulators
+        if (!err.response && api.defaults.baseURL) {
+          try {
+            const primary = api.defaults.baseURL as string;
+            const fallback = primary.replace('192.168.1.20', '10.0.2.2');
+            console.log('Attempting fallback backend URL:', fallback + '/staff/google/verify');
+            response = await axios.post<AuthResponse>(fallback + '/staff/google/verify', {
+              id_token: idToken,
+            }, { timeout: 10000, headers: { 'Content-Type': 'application/json', Accept: 'application/ld+json' } });
+          } catch (err2: any) {
+            console.log('Fallback request also failed:', err2?.message || err2);
+            throw err2;
+          }
+        } else {
+          throw err;
+        }
+      }
 
       console.log('Backend auth response:', JSON.stringify(response.data, null, 2));
 
@@ -76,6 +104,8 @@ export const googleAuthService = {
       console.log('Google Sign-In error:', error);
       console.log('Error code:', error.code);
       console.log('Error message:', error.message);
+      console.log('Error request:', error.request);
+      console.log('Error response:', error.response);
 
       // Handle specific error codes
       if (error.code === 'SIGN_IN_CANCELLED') {
@@ -90,9 +120,10 @@ export const googleAuthService = {
         console.log('2. Package name mismatch (should be: com.appdev)');
         console.log('3. Web Client ID is incorrect');
         console.log('4. Google Sign-In API not enabled');
+        console.log('Configured webClientId:', WEB_CLIENT_ID);
         return {
           success: false,
-          message: 'Google Sign-In configuration error. Check SHA-1 fingerprint and OAuth settings in Google Cloud Console.'
+          message: 'Google Sign-In configuration error. Verify the Android app SHA-1 and OAuth web client ID in Firebase/Google Cloud Console.'
         };
       }
 
@@ -139,6 +170,7 @@ export const googleAuthService = {
    */
   checkPlayServices: async (): Promise<boolean> => {
     try {
+      configureGoogleSignIn();
       console.log('Checking Google Play Services...');
       const available = await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: false });
       console.log('Google Play Services available:', available);
@@ -154,6 +186,7 @@ export const googleAuthService = {
    */
   getCurrentGoogleUser: async () => {
     try {
+      configureGoogleSignIn();
       const user = await GoogleSignin.getCurrentUser();
       console.log('Current Google user:', user);
       return user;
