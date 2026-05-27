@@ -7,7 +7,7 @@ export interface LoginParams {
 
 export async function authLogin({ emailAdd, password }: LoginParams): Promise<AuthResponse> {
   const result = await authService.login(emailAdd, password);
-  
+
   if (result.success && result.data) {
     return result.data;
   } else {
@@ -17,9 +17,10 @@ export async function authLogin({ emailAdd, password }: LoginParams): Promise<Au
 
 export async function authRegister(email: string, password: string) {
   const result = await authService.register(email, password);
-  
-  if (result.success && result.data) {
-    return result.data;
+
+  if (result.success) {
+    // Return data even for unverified users in development
+    return result.data || { user: { email }, token: result.message || '' };
   } else {
     throw new Error(result.message || 'Registration failed');
   }

@@ -39,6 +39,9 @@ const Register = () => {
     if (registerError && registerErrorMessage) {
       Alert.alert('Registration Failed', registerErrorMessage);
       dispatch(resetRegister());
+    } else if (!registerError && registerErrorMessage && registerErrorMessage.includes('successful')) {
+      // Registration successful - show verification message and redirect
+      handleLoginAfterVerification();
     }
   }, [registerError, registerErrorMessage, dispatch]);
 
@@ -52,6 +55,13 @@ const Register = () => {
       return;
     }
     dispatch(userRegister({ email: emailAdd, password }));
+  };
+
+  const handleLoginAfterVerification = () => {
+    dispatch(resetRegister());
+    Alert.alert('Email Verification Required', 'Please verify your email address and then log in with your credentials.', [
+      { text: 'Go to Login', onPress: () => navigation.navigate(ROUTES.LOGIN) },
+    ]);
   };
 
   return (
@@ -136,7 +146,7 @@ const Register = () => {
         </View>
       </Animated.View>
     </View>
-    
+
   );
 };
 

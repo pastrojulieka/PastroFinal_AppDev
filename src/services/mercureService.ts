@@ -1,5 +1,4 @@
 import EventSource from 'react-native-sse';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from './api';
 
 // Mercure Hub URL - update this to match your Docker Mercure service

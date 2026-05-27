@@ -40,6 +40,7 @@ function* registerSaga(action: RegisterAction) {
   try {
     yield put({ type: USER_REGISTER_REQUEST });
     const data: AuthResponse = yield call(authRegister, action.payload.email, action.payload.password);
+    // Always consider it successful if we get data back
     yield put({ type: USER_REGISTER_COMPLETED, payload: data });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Registration failed';

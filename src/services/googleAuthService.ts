@@ -1,6 +1,6 @@
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import auth from '@react-native-firebase/auth';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import storage from './inMemoryStorage';
 import api from './api';
 import axios from 'axios';
 import { AUTH_TOKEN_KEY, AUTH_USER_KEY } from './storageKeys';
@@ -68,7 +68,7 @@ export const googleAuthService = {
       try {
         response = await api.post<AuthResponse>('/staff/google/verify', {
           id_token: idToken,
-  });
+        });
       } catch (err: any) {
         console.log('Primary backend request failed:', err?.message || err);
         // If network error (no response), try emulator fallback host for Android emulators
@@ -93,8 +93,8 @@ export const googleAuthService = {
 
       // Store tokens same as regular login
       if (response.data.token) {
-        await AsyncStorage.setItem(AUTH_TOKEN_KEY, response.data.token);
-        await AsyncStorage.setItem(AUTH_USER_KEY, JSON.stringify(response.data.user));
+        await storage.setItem(AUTH_TOKEN_KEY, response.data.token);
+        await storage.setItem(AUTH_USER_KEY, JSON.stringify(response.data.user));
         console.log('App token stored successfully');
         return { success: true, data: response.data };
       }
@@ -144,7 +144,7 @@ export const googleAuthService = {
       // Sign out from Firebase
       await auth().signOut();
       // Clear local storage
-      await AsyncStorage.multiRemove([AUTH_TOKEN_KEY, AUTH_USER_KEY, 'customer_name']);
+      await storage.multiRemove([AUTH_TOKEN_KEY, AUTH_USER_KEY]);
       console.log('Google Sign-Out successful');
     } catch (error) {
       console.log('Google Sign-Out error:', error);

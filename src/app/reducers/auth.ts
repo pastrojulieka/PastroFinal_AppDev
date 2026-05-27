@@ -80,6 +80,7 @@ export default function reducer(state = INITIAL_STATE, action: Action): AuthStat
         data: action.payload,
         registerLoading: false,
         registerError: false,
+        registerErrorMessage: 'Registration successful! A verification email has been sent. You can log in after verifying your email.',
       };
 
     case USER_REGISTER_ERROR:

@@ -1,11 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { View, StyleSheet, ScrollView, Alert } from 'react-native';
 import { Card, Text, Button, TextInput } from 'react-native-paper';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { orderService, Product, CreateOrderData } from '../services';
-
-const CUSTOMER_NAME_KEY = 'customer_name';
 
 const CreateOrderScreen = () => {
   const navigation = useNavigation<any>();
@@ -20,17 +17,6 @@ const CreateOrderScreen = () => {
 
   const totalPrice = (product.price || 0) * (parseInt(quantity, 10) || 0);
 
-  // Load saved customer name on mount
-  useEffect(() => {
-    const loadCustomerName = async () => {
-      const savedName = await AsyncStorage.getItem(CUSTOMER_NAME_KEY);
-      if (savedName) {
-        setCustomerName(savedName);
-      }
-    };
-    loadCustomerName();
-  }, []);
-
   const handleSubmit = async () => {
     const qty = parseInt(quantity, 10);
     if (!qty || qty < 1) {
@@ -43,11 +29,9 @@ const CreateOrderScreen = () => {
       return;
     }
 
+    console.log('🔵 Submitting order...');
     setSubmitting(true);
     try {
-      // Save customer name for future use
-      await AsyncStorage.setItem(CUSTOMER_NAME_KEY, customerName.trim());
-
       const orderData: CreateOrderData = {
         product_id: product.id,
         quantity: qty,
@@ -56,16 +40,21 @@ const CreateOrderScreen = () => {
         color: color || undefined,
       };
 
+      console.log('📤 Order data being sent:', JSON.stringify(orderData, null, 2));
       const result = await orderService.createOrder(orderData);
+
       if (result.success) {
+        console.log('✅ Order placed successfully!');
         Alert.alert('Order Placed!', `Your order for ${product.name} has been placed successfully.`, [
           { text: 'OK', onPress: () => navigation.goBack() },
         ]);
       } else {
+        console.log('❌ Order creation failed:', result.message);
         Alert.alert('Order Failed', result.message || 'Could not place order. Please try again.');
       }
     } catch (err) {
-      Alert.alert('Error', 'An unexpected error occurred.');
+      console.log('❌ Unexpected error:', err);
+      Alert.alert('Error', 'An unexpected error occurred. Please try again.');
     } finally {
       setSubmitting(false);
     }

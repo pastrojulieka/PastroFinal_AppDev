@@ -2,12 +2,8 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { View, FlatList, StyleSheet, ActivityIndicator } from 'react-native';
 import { Card, Text, Button, Chip } from 'react-native-paper';
 import { useFocusEffect } from '@react-navigation/native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { orderService, Order } from '../services';
 import { useMercureOrders } from '../hooks/useMercure';
-import { AUTH_USER_KEY } from '../services/storageKeys';
-
-const CUSTOMER_NAME_KEY = 'customer_name';
 
 const OrdersScreen = () => {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -24,18 +20,7 @@ const OrdersScreen = () => {
 
   // Load user ID for Mercure private topic subscription
   useEffect(() => {
-    const loadUserId = async () => {
-      try {
-        const userStr = await AsyncStorage.getItem(AUTH_USER_KEY);
-        if (userStr) {
-          const user = JSON.parse(userStr);
-          setUserId(user.id);
-        }
-      } catch (e) {
-        console.log('Failed to load user ID for Mercure:', e);
-      }
-    };
-    loadUserId();
+    // User ID loading removed - no persistent storage
   }, []);
 
   // Real-time order updates via Mercure
@@ -50,15 +35,8 @@ const OrdersScreen = () => {
       setLoading(true);
       setError(null);
 
-      // Load saved customer name
-      const savedName = await AsyncStorage.getItem(CUSTOMER_NAME_KEY);
-      console.log('Loaded customer name:', savedName);
-      if (savedName) {
-        setCustomerName(savedName);
-      }
-
       // Fetch orders for this customer
-      const result = await orderService.getOrders(savedName || undefined);
+      const result = await orderService.getOrders(undefined);
       if (result.success && result.data) {
         setOrders(result.data);
       } else {

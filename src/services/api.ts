@@ -1,6 +1,6 @@
 import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { AUTH_TOKEN_KEY, AUTH_USER_KEY } from './storageKeys';
+import storage from './inMemoryStorage';
+import { AUTH_TOKEN_KEY } from './storageKeys';
 
 const API_BASE_URL = 'https://finalwebdev-production.up.railway.app/api';
 
@@ -19,30 +19,31 @@ const api: AxiosInstance = axios.create({
 api.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
     try {
-      const raw = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
-      if (!raw) {
-        console.log('API Interceptor - Token: NOT FOUND (no key)');
-      } else {
-        let token = raw;
-        try {
-          const parsed = JSON.parse(raw);
-          if (parsed && typeof parsed === 'object' && parsed.token) token = parsed.token;
-        } catch (_) {
-          // raw is a plain token string
+      const token = await storage.getItem(AUTH_TOKEN_KEY);
+      console.log('🔵 API Interceptor - Token found:', token ? 'YES' : 'NO');
+
+      if (token) {
+        // Ensure headers object exists
+        if (!config.headers) {
+          config.headers = {} as any;
         }
-        if (token) {
-          const headers = { ...(config.headers as Record<string, string> | undefined) };
-          headers.Authorization = `Bearer ${token}`;
-          config.headers = headers as any;
-          console.log('API Interceptor - Added Authorization header');
+
+        if (token.startsWith('dev_')) {
+          // For dev tokens, send as custom header to bypass JWT validation
+          config.headers['X-Dev-User'] = token;
+          console.log('✅ API Interceptor - Added X-Dev-User header (dev mode)');
         } else {
-          console.log('API Interceptor - Token: NOT FOUND (parse produced no token)');
+          // Send real JWT tokens with Bearer scheme
+          config.headers.Authorization = `Bearer ${token}`;
+          console.log('✅ API Interceptor - Added Authorization header with JWT');
         }
+      } else {
+        console.log('⚠️ API Interceptor - Token: NOT FOUND');
       }
     } catch (error) {
-      console.log('Error getting token:', error);
+      console.log('❌ Error getting token from storage:', error);
     }
-    console.log('API Request:', config.method, `${config.baseURL}${config.url}`);
+    console.log('📤 API Request:', config.method?.toUpperCase(), `${config.baseURL}${config.url}`);
     return config;
   },
   (error: AxiosError) => Promise.reject(error)
@@ -51,10 +52,10 @@ api.interceptors.request.use(
 // Response interceptor for error handling
 api.interceptors.response.use(
   (response) => response,
-  async (error: AxiosError) => {
+  (error: AxiosError) => {
     if (error.response?.status === 401) {
-      // Token expired, clear storage
-      await AsyncStorage.multiRemove([AUTH_TOKEN_KEY, AUTH_USER_KEY]);
+      // Token expired
+      console.log('Unauthorized - 401 status');
     }
     return Promise.reject(error);
   }
