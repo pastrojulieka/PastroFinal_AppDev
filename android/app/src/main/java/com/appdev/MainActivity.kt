@@ -6,6 +6,7 @@ import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnabled
 import com.facebook.react.defaults.DefaultReactActivityDelegate
+import com.google.firebase.FirebaseApp
 
 class MainActivity : ReactActivity() {
 
@@ -16,6 +17,11 @@ class MainActivity : ReactActivity() {
 
   override fun getMainComponentName(): String = "AppDev"
   override fun onCreate(savedInstanceState: Bundle?) {
+    // Initialize Firebase first
+    if (FirebaseApp.getApps(this).isEmpty()) {
+      FirebaseApp.initializeApp(this)
+    }
+    
     supportFragmentManager.fragmentFactory = RNScreensFragmentFactory()
     super.onCreate(savedInstanceState)
   }

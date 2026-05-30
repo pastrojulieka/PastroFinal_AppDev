@@ -1,34 +1,44 @@
 import api from './api';
+import authService from './authService';
 import { ApiResponse, Order, CreateOrderData } from './types';
+
+export type CreateOrderOptions = {
+  productName?: string;
+  unitPrice?: number;
+};
+
+const parseOrdersList = (data: any): Order[] => {
+  if (data?.member && Array.isArray(data.member)) {
+    return data.member;
+  }
+  if (data?.data && Array.isArray(data.data)) {
+    return data.data;
+  }
+  if (Array.isArray(data)) {
+    return data;
+  }
+  return [];
+};
 
 export const orderService = {
   getOrders: async (customerName?: string): Promise<ApiResponse<Order[]>> => {
     try {
-      console.log('Fetching orders for customer:', customerName);
-      const params = customerName ? { customer_name: customerName } : {};
-      const response = await api.get<any>('/orders', { params });
-      console.log('Orders response:', JSON.stringify(response.data, null, 2));
-
-      // Handle both API Platform format (@context/member) and custom format (success/data)
-      let orders: Order[] = [];
-      if (response.data.member && Array.isArray(response.data.member)) {
-        // API Platform Collection format
-        orders = response.data.member;
-      } else if (response.data.data && Array.isArray(response.data.data)) {
-        // Custom API format with success/data
-        orders = response.data.data;
-      } else if (Array.isArray(response.data)) {
-        // Direct array response
-        orders = response.data;
+      const hasJwt = await authService.ensureServerJwt();
+      if (!hasJwt) {
+        return {
+          success: false,
+          message: 'Please log in again to load orders from the server.',
+        };
       }
 
-      return { success: true, data: orders };
+      const params = customerName ? { customer_name: customerName } : {};
+      const response = await api.get<any>('/orders', { params });
+      return { success: true, data: parseOrdersList(response.data) };
     } catch (error) {
-      console.log('Orders error:', error);
       const axiosError = error as { response?: { data?: { message?: string } } };
       return {
         success: false,
-        message: axiosError.response?.data?.message || 'Failed to fetch orders'
+        message: axiosError.response?.data?.message || 'Failed to fetch orders',
       };
     }
   },
@@ -41,93 +51,81 @@ export const orderService = {
       const axiosError = error as { response?: { data?: { message?: string } } };
       return {
         success: false,
-        message: axiosError.response?.data?.message || 'Failed to fetch order'
+        message: axiosError.response?.data?.message || 'Failed to fetch order',
       };
     }
   },
 
-  createOrder: async (orderData: CreateOrderData): Promise<ApiResponse<Order>> => {
-    try {
-      console.log('🔵 Creating order with data:', JSON.stringify(orderData, null, 2));
+  createOrder: async (
+    orderData: CreateOrderData,
+    _options?: CreateOrderOptions
+  ): Promise<ApiResponse<Order>> => {
+    if (!orderData.product_id) {
+      return { success: false, message: 'Product ID is required' };
+    }
+    if (!orderData.quantity || orderData.quantity < 1) {
+      return { success: false, message: 'Quantity must be at least 1' };
+    }
+    if (!orderData.customer_name?.trim()) {
+      return { success: false, message: 'Customer name is required' };
+    }
 
-      // Validate required fields
-      if (!orderData.product_id) {
-        console.log('❌ Validation failed: Product ID is required');
-        return { success: false, message: 'Product ID is required' };
-      }
-      if (!orderData.quantity || orderData.quantity < 1) {
-        console.log('❌ Validation failed: Invalid quantity');
-        return { success: false, message: 'Quantity must be at least 1' };
-      }
-      if (!orderData.customer_name || !orderData.customer_name.trim()) {
-        console.log('❌ Validation failed: Customer name is required');
-        return { success: false, message: 'Customer name is required' };
-      }
-
-      // Backend expects customer_name in request body
-      const requestBody = {
-        product_id: orderData.product_id,
-        quantity: orderData.quantity,
-        customer_name: orderData.customer_name,
-        material: orderData.material || null,
-        color: orderData.color || null,
+    const hasJwt = await authService.ensureServerJwt();
+    if (!hasJwt) {
+      return {
+        success: false,
+        message:
+          'Could not authenticate with the server. Log out, log in again, then place your order.',
       };
+    }
 
-      console.log('📤 POST request to: /orders');
-      console.log('📦 Request body:', JSON.stringify(requestBody, null, 2));
+    const requestBody = {
+      product_id: orderData.product_id,
+      quantity: orderData.quantity,
+      customer_name: orderData.customer_name,
+      material: orderData.material || null,
+      color: orderData.color || null,
+    };
 
+    try {
       const response = await api.post<any>('/orders', requestBody);
-      console.log('✅ Create order response:', JSON.stringify(response.data, null, 2));
 
-      // Handle both API Platform format and custom format
       let order: Order | undefined;
-      if (response.data.data) {
+      if (response.data?.data) {
         order = response.data.data;
-      } else if (response.data.id) {
+      } else if (response.data?.id) {
         order = response.data;
-      } else if (response.data['@id']) {
-        // API Platform format
-        order = response.data as any;
+      } else if (response.data?.['@id']) {
+        order = response.data as Order;
       }
 
       if (!order) {
-        console.log('❌ No order data in response:', response.data);
         return { success: false, message: 'No order data in response' };
       }
 
-      console.log('✅ Order created successfully:', order.id);
-      return { success: true, data: order };
-    } catch (error: any) {
-      console.log('❌ Create order error:', error.message);
+      return { success: true, data: order, code: 'SERVER' };
+    } catch (error: unknown) {
       const axiosError = error as {
         response?: {
           status?: number;
-          statusText?: string;
-          data?: { message?: string; detail?: string; '@type'?: string; description?: string; violations?: any[] }
+          data?: {
+            message?: string;
+            detail?: string;
+            description?: string;
+            violations?: { propertyPath: string; message: string }[];
+          };
         };
-        message?: string;
       };
 
-      console.log('Error response status:', axiosError.response?.status, axiosError.response?.statusText);
-      console.log('Error response data:', JSON.stringify(axiosError.response?.data, null, 2));
-      console.log('Error message:', axiosError.message);
-
+      const status = axiosError.response?.status;
       let message = 'Failed to create order';
-      if (axiosError.response?.status === 401 || axiosError.response?.status === 403) {
-        message = 'Authentication required. Please log in again.';
-      } else if (axiosError.response?.status === 400) {
-        if (axiosError.response?.data?.violations) {
-          // Validation errors from API Platform
-          message = axiosError.response.data.violations
-            .map((v: any) => `${v.propertyPath}: ${v.message}`)
-            .join(', ');
-        } else if (axiosError.response?.data?.message) {
-          message = axiosError.response.data.message;
-        } else if (axiosError.response?.data?.detail) {
-          message = axiosError.response.data.detail;
-        } else {
-          message = 'Bad request - please check your input';
-        }
+
+      if (status === 401 || status === 403) {
+        message = 'Session expired. Log out, log in again, then retry your order.';
+      } else if (status === 400 && axiosError.response?.data?.violations) {
+        message = axiosError.response.data.violations
+          .map((v) => `${v.propertyPath}: ${v.message}`)
+          .join(', ');
       } else if (axiosError.response?.data?.message) {
         message = axiosError.response.data.message;
       } else if (axiosError.response?.data?.detail) {
@@ -136,7 +134,6 @@ export const orderService = {
         message = axiosError.response.data.description;
       }
 
-      console.log('📌 Final error message:', message);
       return { success: false, message };
     }
   },

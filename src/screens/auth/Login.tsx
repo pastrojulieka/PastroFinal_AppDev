@@ -54,8 +54,7 @@ const Login = () => {
     setGoogleLoading(true);
     try {
       const result = await googleAuthService.signInWithGoogle();
-      if (result.success && result.data) {
-        // Dispatch login success to Redux
+      if (result.success && result.data?.token) {
         dispatch(loginSuccess(result.data));
       } else {
         Alert.alert('Google Sign-In Failed', result.message || 'Could not sign in with Google');

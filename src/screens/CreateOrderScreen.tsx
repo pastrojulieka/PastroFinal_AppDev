@@ -41,13 +41,18 @@ const CreateOrderScreen = () => {
       };
 
       console.log('📤 Order data being sent:', JSON.stringify(orderData, null, 2));
-      const result = await orderService.createOrder(orderData);
+      const result = await orderService.createOrder(orderData, {
+        productName: product.name,
+        unitPrice: product.price ?? 0,
+      });
 
       if (result.success) {
         console.log('✅ Order placed successfully!');
-        Alert.alert('Order Placed!', `Your order for ${product.name} has been placed successfully.`, [
-          { text: 'OK', onPress: () => navigation.goBack() },
-        ]);
+        Alert.alert(
+          'Order Placed!',
+          `Your order for ${product.name} was saved to the server.`,
+          [{ text: 'OK', onPress: () => navigation.goBack() }]
+        );
       } else {
         console.log('❌ Order creation failed:', result.message);
         Alert.alert('Order Failed', result.message || 'Could not place order. Please try again.');

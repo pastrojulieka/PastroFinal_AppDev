@@ -2,8 +2,9 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { View, FlatList, StyleSheet, ActivityIndicator } from 'react-native';
 import { Card, Text, Button, Chip } from 'react-native-paper';
 import { useFocusEffect } from '@react-navigation/native';
-import { orderService, Order } from '../services';
+import { authService, orderService, Order, notificationService, orderWatchService, syncService } from '../services';
 import { useMercureOrders } from '../hooks/useMercure';
+import { getOrderStatusColor, getOrderStatusLabel } from '../utils/orderStatus';
 
 const OrdersScreen = () => {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -18,17 +19,38 @@ const OrdersScreen = () => {
     }, [])
   );
 
-  // Load user ID for Mercure private topic subscription
   useEffect(() => {
-    // User ID loading removed - no persistent storage
+    authService.getUser().then((user) => {
+      if (user?.id != null) {
+        setUserId(Number(user.id));
+      }
+    });
   }, []);
 
-  // Real-time order updates via Mercure
+  // Real-time order updates via Mercure + push notifications refresh list
   const handleOrderUpdate = useCallback(() => {
     loadOrdersWithCustomer();
   }, []);
 
   useMercureOrders(userId, handleOrderUpdate);
+
+  useEffect(() => {
+    return notificationService.onOrderUpdate(handleOrderUpdate);
+  }, [handleOrderUpdate]);
+
+  useEffect(() => {
+    const unsubscribe = syncService.subscribe((payload) => {
+      if (payload.changed && payload.data?.orders) {
+        setOrders(payload.data.orders);
+        setLoading(false);
+      }
+    });
+    return unsubscribe;
+  }, []);
+
+  useEffect(() => {
+    void orderWatchService.forceCheck();
+  }, []);
 
   const loadOrdersWithCustomer = async () => {
     try {
@@ -49,15 +71,7 @@ const OrdersScreen = () => {
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'delivered': return '#4CAF50';
-      case 'shipped': return '#2196F3';
-      case 'processing': return '#FF9800';
-      case 'cancelled': return '#F44336';
-      default: return '#9E9E9E';
-    }
-  };
+  const getStatusColor = (status?: string) => getOrderStatusColor(status);
 
   const renderOrder = ({ item }: { item: Order }) => (
     <Card style={styles.orderCard}>
@@ -69,7 +83,7 @@ const OrdersScreen = () => {
             textStyle={styles.statusChipText}
             compact
           >
-            {item.status}
+            {getOrderStatusLabel(item.status)}
           </Chip>
         </View>
 
@@ -150,6 +164,20 @@ const OrdersScreen = () => {
 
   return (
     <View style={styles.container}>
+      <View style={styles.legendRow}>
+        <View style={styles.legendItem}>
+          <View style={[styles.legendDot, { backgroundColor: getOrderStatusColor('pending') }]} />
+          <Text style={styles.legendText}>Pending</Text>
+        </View>
+        <View style={styles.legendItem}>
+          <View style={[styles.legendDot, { backgroundColor: getOrderStatusColor('complete') }]} />
+          <Text style={styles.legendText}>Complete</Text>
+        </View>
+        <View style={styles.legendItem}>
+          <View style={[styles.legendDot, { backgroundColor: getOrderStatusColor('cancelled') }]} />
+          <Text style={styles.legendText}>Cancelled</Text>
+        </View>
+      </View>
       <FlatList
         data={orders}
         renderItem={renderOrder}
@@ -199,6 +227,32 @@ const styles = StyleSheet.create({
   },
   list: {
     padding: 12,
+    paddingTop: 0,
+  },
+  legendRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    backgroundColor: '#1A1A1A',
+    borderBottomWidth: 1,
+    borderBottomColor: '#333',
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  legendDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  legendText: {
+    color: '#CCC',
+    fontSize: 12,
+    fontWeight: '600',
   },
   orderCard: {
     marginBottom: 14,

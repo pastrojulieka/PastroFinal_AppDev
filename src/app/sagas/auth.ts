@@ -28,10 +28,14 @@ function* loginSaga(action: LoginAction) {
     const data: AuthResponse = yield call(authLogin, action.payload);
     yield put({ type: USER_LOGIN_COMPLETED, payload: data });
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Login failed';
+    const err = error as Error & { code?: string };
+    const payload =
+      err.code === 'EMAIL_NOT_VERIFIED'
+        ? { message: err.message, code: 'EMAIL_NOT_VERIFIED' }
+        : err.message || 'Login failed';
     yield put({
       type: USER_LOGIN_ERROR,
-      payload: errorMessage,
+      payload,
     });
   }
 }

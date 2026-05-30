@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { View, FlatList, StyleSheet, ActivityIndicator } from 'react-native';
 import { Card, Text, Button, Chip } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
-import { productService, stockService, Product, Stock } from '../services';
+import { productService, stockService, Product, Stock, syncService } from '../services';
 import { useMercureProducts, useMercureStocks } from '../hooks/useMercure';
 import { ROUTES } from '../utils';
 
@@ -24,6 +24,32 @@ const ProductsScreen = () => {
 
   useMercureProducts(handleRealTimeRefresh);
   useMercureStocks(handleRealTimeRefresh);
+
+  useEffect(() => {
+    const unsubscribe = syncService.subscribe((payload) => {
+      if (!payload.changed || !payload.data) return;
+      if (payload.data.products) {
+        setProducts(payload.data.products as Product[]);
+      }
+      if (payload.data.stocks) {
+        const stockMap: Record<string, Stock> = {};
+        payload.data.stocks.forEach((stock) => {
+          const productId = stock.product_id;
+          if (productId) {
+            stockMap[String(productId)] = {
+              id: stock.id,
+              quantity: stock.quantity,
+              status: stock.status,
+              product: { id: productId },
+            } as Stock;
+          }
+        });
+        setStocks(stockMap);
+      }
+      setLoading(false);
+    });
+    return unsubscribe;
+  }, []);
 
   const loadProductsAndStocks = async () => {
     try {

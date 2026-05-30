@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { View, StyleSheet, ActivityIndicator, ScrollView } from 'react-native';
 import { Card, Text, Button, Avatar } from 'react-native-paper';
 import { useDispatch } from 'react-redux';
-import { customerService, authService, CustomerProfile, CustomerData } from '../services';
+import { customerService, authService, googleAuthService, CustomerProfile, CustomerData } from '../services';
 import { useMercureProfile } from '../hooks/useMercure';
 import { resetLogin } from '../app/reducers/auth';
 
@@ -71,6 +71,7 @@ const ProfileScreen = () => {
   };
 
   const handleLogout = async () => {
+    await googleAuthService.signOut();
     await authService.logout();
     dispatch(resetLogin());
   };

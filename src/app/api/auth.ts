@@ -10,9 +10,12 @@ export async function authLogin({ emailAdd, password }: LoginParams): Promise<Au
 
   if (result.success && result.data) {
     return result.data;
-  } else {
-    throw new Error(result.message || 'Login failed');
   }
+  const error = new Error(result.message || 'Login failed') as Error & { code?: string };
+  if (result.code) {
+    error.code = result.code;
+  }
+  throw error;
 }
 
 export async function authRegister(email: string, password: string) {

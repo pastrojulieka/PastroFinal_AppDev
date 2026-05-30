@@ -1,11 +1,16 @@
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
-import { useEffect } from 'react';
-import { Platform, StatusBar } from 'react-native';
-import { useSelector } from 'react-redux';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Platform, StatusBar, StyleSheet, View } from 'react-native';
+import { useDispatch, useSelector } from 'react-redux';
 
 import AuthNav from './AuthNav';
 import MainNav from './MainNav';
+import { loginSuccess, resetLogin } from '../app/reducers/auth';
+import { authService } from '../services';
+import { setUnauthorizedHandler } from '../services/api';
 import mercureService from '../services/mercureService';
+import notificationService from '../services/notificationService';
+import orderWatchService from '../services/orderWatchService';
 
 const DarkTheme = {
   ...DefaultTheme,
@@ -22,7 +27,9 @@ const DarkTheme = {
 };
 
 export default () => {
+  const dispatch = useDispatch();
   const isLoggedIn = useSelector((state: any) => state.auth?.data != null);
+  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
     if (Platform.OS === 'android') {
@@ -31,16 +38,58 @@ export default () => {
     StatusBar.setBarStyle('light-content', true);
   }, []);
 
-  // Initialize/destroy Mercure connection based on auth state
   useEffect(() => {
+    setUnauthorizedHandler(() => {
+      dispatch(resetLogin());
+    });
+  }, [dispatch]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    authService.restoreSession().then((session) => {
+      if (mounted && session) {
+        dispatch(loginSuccess(session));
+      }
+      if (mounted) {
+        setIsReady(true);
+      }
+    });
+
+    return () => {
+      mounted = false;
+    };
+  }, [dispatch]);
+
+  useEffect(() => {
+    if (!isReady) {
+      return;
+    }
     if (isLoggedIn) {
       mercureService.fetchSubscriberToken().then(() => {
         console.log('[Navigation] Mercure subscriber token fetched');
       });
+      notificationService.initialize().then(() => {
+        orderWatchService.start();
+        console.log('[Navigation] Live order notifications started');
+      }).catch((error) => {
+        console.log('[Navigation] Push notification init failed:', error);
+        orderWatchService.start();
+      });
     } else {
       mercureService.destroy();
+      notificationService.shutdown();
+      orderWatchService.stop();
     }
-  }, [isLoggedIn]);
+  }, [isLoggedIn, isReady]);
+
+  if (!isReady) {
+    return (
+      <View style={styles.bootContainer}>
+        <ActivityIndicator size="large" color="#ffb347" />
+      </View>
+    );
+  }
 
   return (
     <NavigationContainer theme={DarkTheme}>
@@ -48,3 +97,12 @@ export default () => {
     </NavigationContainer>
   );
 };
+
+const styles = StyleSheet.create({
+  bootContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#121212',
+  },
+});

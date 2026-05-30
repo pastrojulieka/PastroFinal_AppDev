@@ -1,34 +1,32 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 /**
- * In-memory storage service to replace AsyncStorage
- * Stores data in memory for the duration of the app session
+ * Persistent key-value storage (AsyncStorage) for auth tokens and user data.
  */
+const storage = {
+  async setItem(key: string, value: string): Promise<void> {
+    await AsyncStorage.setItem(key, value);
+  },
 
-class InMemoryStorage {
-    private store: Map<string, string> = new Map();
+  async getItem(key: string): Promise<string | null> {
+    return AsyncStorage.getItem(key);
+  },
 
-    async setItem(key: string, value: string): Promise<void> {
-        this.store.set(key, value);
-    }
+  async removeItem(key: string): Promise<void> {
+    await AsyncStorage.removeItem(key);
+  },
 
-    async getItem(key: string): Promise<string | null> {
-        return this.store.get(key) ?? null;
-    }
+  async multiRemove(keys: string[]): Promise<void> {
+    await AsyncStorage.multiRemove(keys);
+  },
 
-    async removeItem(key: string): Promise<void> {
-        this.store.delete(key);
-    }
+  async clear(): Promise<void> {
+    await AsyncStorage.clear();
+  },
 
-    async multiRemove(keys: string[]): Promise<void> {
-        keys.forEach(key => this.store.delete(key));
-    }
+  async getAllKeys(): Promise<string[]> {
+    return AsyncStorage.getAllKeys();
+  },
+};
 
-    async clear(): Promise<void> {
-        this.store.clear();
-    }
-
-    async getAllKeys(): Promise<string[]> {
-        return Array.from(this.store.keys());
-    }
-}
-
-export default new InMemoryStorage();
+export default storage;

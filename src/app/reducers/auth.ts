@@ -17,6 +17,7 @@ interface AuthState {
   isLoading: boolean;
   isError: boolean;
   errorMessage: string | null;
+  loginErrorCode: string | null;
   registerLoading: boolean;
   registerError: boolean;
   registerErrorMessage: string | null;
@@ -32,6 +33,7 @@ const INITIAL_STATE: AuthState = {
   isLoading: false,
   isError: false,
   errorMessage: null,
+  loginErrorCode: null,
   registerLoading: false,
   registerError: false,
   registerErrorMessage: null,
@@ -45,6 +47,7 @@ export default function reducer(state = INITIAL_STATE, action: Action): AuthStat
         isLoading: true,
         isError: false,
         errorMessage: null,
+        loginErrorCode: null,
       };
 
     case USER_LOGIN_COMPLETED:
@@ -55,16 +58,25 @@ export default function reducer(state = INITIAL_STATE, action: Action): AuthStat
         isError: false,
       };
 
-    case USER_LOGIN_ERROR:
+    case USER_LOGIN_ERROR: {
+      const payload = action.payload;
+      const message =
+        typeof payload === 'string'
+          ? payload
+          : payload?.message || 'Login failed';
+      const errorCode =
+        typeof payload === 'object' && payload?.code ? payload.code : null;
       return {
         ...state,
         isLoading: false,
         isError: true,
-        errorMessage: action.payload || 'Login failed',
+        errorMessage: message,
+        loginErrorCode: errorCode,
       };
+    }
 
     case USER_LOGIN_RESET:
-      return INITIAL_STATE;
+      return { ...INITIAL_STATE };
 
     case USER_REGISTER_REQUEST:
       return {

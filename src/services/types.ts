@@ -3,6 +3,7 @@ export interface ApiResponse<T = unknown> {
   success: boolean;
   data?: T;
   message?: string;
+  code?: string;
 }
 
 // Auth Types
@@ -71,6 +72,7 @@ export interface ProductsCollection {
 // Order Types - matches backend API response
 export interface Order {
   id: number;
+  product_id?: number;
   customer_name?: string;
   product_name?: string;
   material?: string;
@@ -78,7 +80,7 @@ export interface Order {
   quantity: number;
   price: number;
   total_amount: number;
-  status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+  status: 'pending' | 'complete' | 'cancelled' | string;
   date?: string;
   delivery_date?: string;
 }

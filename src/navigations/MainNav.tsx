@@ -21,19 +21,25 @@ const TabIcon = ({ name, focused }: { name: string; focused: boolean }) => (
   </Text>
 );
 
+const tabIconForRoute = (routeName: string): string => {
+  switch (routeName) {
+    case ROUTES.PRODUCTS:
+      return '\u{1F6CD}\u{FE0F}';
+    case ROUTES.ORDERS:
+      return '\u{1F4E6}';
+    case ROUTES.PROFILE:
+      return '\u{1F464}';
+    default:
+      return '\u2022';
+  }
+};
+
 const TabNavigator = () => (
   <Tab.Navigator
     screenOptions={({ route }) => ({
-      tabBarIcon: ({ focused }) => {
-        let iconName: string;
-        switch (route.name) {
-          case ROUTES.PRODUCTS: iconName = '�️'; break;
-          case ROUTES.ORDERS: iconName = '📦'; break;
-          case ROUTES.PROFILE: iconName = '👤'; break;
-          default: iconName = '•';
-        }
-        return <TabIcon name={iconName} focused={focused} />;
-      },
+      tabBarIcon: ({ focused }) => (
+        <TabIcon name={tabIconForRoute(route.name)} focused={focused} />
+      ),
       tabBarActiveTintColor: '#ffb347',
       tabBarInactiveTintColor: '#666',
       tabBarStyle: {

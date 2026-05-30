@@ -2,10 +2,18 @@
  * @format
  */
 
+import 'react-native-gesture-handler';
 import { AppRegistry } from 'react-native';
+import messaging from '@react-native-firebase/messaging';
 import { PaperProvider, MD3DarkTheme } from 'react-native-paper';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import App from './App';
 import { name as appName } from './app.json';
+import { handleBackgroundRemoteMessage } from './src/services/notificationService';
+
+messaging().setBackgroundMessageHandler(async (remoteMessage) => {
+  await handleBackgroundRemoteMessage(remoteMessage);
+});
 
 const paperTheme = {
   ...MD3DarkTheme,
@@ -21,9 +29,11 @@ const paperTheme = {
 };
 
 const Root = () => (
-  <PaperProvider theme={paperTheme}>
-    <App />
-  </PaperProvider>
+  <SafeAreaProvider>
+    <PaperProvider theme={paperTheme}>
+      <App />
+    </PaperProvider>
+  </SafeAreaProvider>
 );
 
 AppRegistry.registerComponent(appName, () => Root);

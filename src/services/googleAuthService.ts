@@ -2,9 +2,24 @@ import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import auth from '@react-native-firebase/auth';
 import storage from './inMemoryStorage';
 import api from './api';
-import axios from 'axios';
+import { isValidJwtToken } from './authToken';
 import { AUTH_TOKEN_KEY, AUTH_USER_KEY } from './storageKeys';
-import { ApiResponse, AuthResponse } from './types';
+import { ApiResponse, AuthResponse, User } from './types';
+
+const parseGoogleLoginResponse = (data: Record<string, unknown>): AuthResponse | null => {
+  const token =
+    (data.token as string | undefined) ||
+    (data.access_token as string | undefined) ||
+    (data.jwt as string | undefined);
+  const user =
+    (data.user as User | undefined) ||
+    ((data.data as { user?: User } | undefined)?.user);
+
+  if (!isValidJwtToken(token) || !user) {
+    return null;
+  }
+  return { token: token!, user };
+};
 
 const WEB_CLIENT_ID = '549158712104-3gigo7j35g5hurv74u2a6l12qff8rdk2.apps.googleusercontent.com';
 let isGoogleSignInConfigured = false;
@@ -12,7 +27,7 @@ let isGoogleSignInConfigured = false;
 const configureGoogleSignIn = () => {
   if (!isGoogleSignInConfigured) {
     GoogleSignin.configure({
-      webClientId: WEB_CLIENT_ID,
+      webClientId: WEB_CLIENT_ID, // Must be the WEB client ID!
       offlineAccess: true,
       forceCodeForRefreshToken: true,
       scopes: ['profile', 'email'],
@@ -58,48 +73,32 @@ export const googleAuthService = {
       const firebaseToken = await firebaseUserCredential.user.getIdToken();
       console.log('Firebase ID token obtained');
 
-      // Send to backend for verification and get app JWT
-      if (!userInfo.data?.user) {
-        return { success: false, message: 'Failed to get user info from Google' };
-      }
-
-      console.log('Sending Google auth request to backend:', api.defaults.baseURL + '/staff/google/verify');
-      let response;
+      console.log('Sending tokens to backend: /login/google');
       try {
-        response = await api.post<AuthResponse>('/staff/google/verify', {
-          id_token: idToken,
+        const response = await api.post<Record<string, unknown>>('/login/google', {
+          idToken,
+          firebaseToken,
         });
-      } catch (err: any) {
-        console.log('Primary backend request failed:', err?.message || err);
-        // If network error (no response), try emulator fallback host for Android emulators
-        if (!err.response && api.defaults.baseURL) {
-          try {
-            const primary = api.defaults.baseURL as string;
-            const fallback = primary.replace('192.168.1.20', '10.0.2.2');
-            console.log('Attempting fallback backend URL:', fallback + '/staff/google/verify');
-            response = await axios.post<AuthResponse>(fallback + '/staff/google/verify', {
-              id_token: idToken,
-            }, { timeout: 10000, headers: { 'Content-Type': 'application/json', Accept: 'application/ld+json' } });
-          } catch (err2: any) {
-            console.log('Fallback request also failed:', err2?.message || err2);
-            throw err2;
-          }
-        } else {
-          throw err;
+        const session = parseGoogleLoginResponse(response.data);
+        if (session) {
+          await storage.setItem(AUTH_TOKEN_KEY, session.token);
+          await storage.setItem(AUTH_USER_KEY, JSON.stringify(session.user));
+          return { success: true, data: session };
         }
+        const message =
+          (response.data.message as string | undefined) ||
+          'Google sign-in succeeded but the server did not return a valid session. Try email login.';
+        return { success: false, message };
+      } catch (err: unknown) {
+        const axiosError = err as { response?: { data?: { message?: string } } };
+        console.log('Backend Google login failed:', axiosError.response?.data || err);
+        return {
+          success: false,
+          message:
+            axiosError.response?.data?.message ||
+            'Failed to connect to the server. Check your connection and try again.',
+        };
       }
-
-      console.log('Backend auth response:', JSON.stringify(response.data, null, 2));
-
-      // Store tokens same as regular login
-      if (response.data.token) {
-        await storage.setItem(AUTH_TOKEN_KEY, response.data.token);
-        await storage.setItem(AUTH_USER_KEY, JSON.stringify(response.data.user));
-        console.log('App token stored successfully');
-        return { success: true, data: response.data };
-      }
-
-      return { success: false, message: 'Backend did not return token' };
     } catch (error: any) {
       console.log('Google Sign-In error:', error);
       console.log('Error code:', error.code);
